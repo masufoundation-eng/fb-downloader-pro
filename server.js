@@ -1,3 +1,4 @@
+// server.js - সম্পূর্ণ আপডেটেড (Metadata সহ)
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -31,7 +32,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, message: { success: false, error: 'Too many requests' } });
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, message: { success: false, error: 'Too many requests' } });
 app.use('/api/', apiLimiter);
 
 function getAnalytics() {
@@ -132,54 +133,150 @@ app.get('/api/blogs', (req, res) => {
     res.json({ success: true, blogs: blogs });
 });
 
+// ============ DOWNLOAD VIDEO (Metadata সহ) ============
 app.post('/api/download-video', async (req, res) => {
     try {
         const { url, quality = 'best' } = req.body;
         if (!url) return res.status(400).json({ success: false, error: 'URL is required' });
         if (!url.includes('facebook.com') && !url.includes('fb.watch') && !url.includes('fb.com')) return res.status(400).json({ success: false, error: 'Invalid Facebook URL' });
+        
         const id = uuidv4();
         const outputPath = path.join(TEMP_DIR, `${id}.mp4`);
         const formatMap = { '144': 'best[height<=144]', '360': 'best[height<=360]', '480': 'best[height<=480]', '720': 'best[height<=720]', '1080': 'best[height<=1080]', 'best': 'best' };
         const format = formatMap[quality] || 'best';
-        await execPromise(`yt-dlp -f "${format}" -o "${outputPath}" --no-warnings --merge-output-format mp4 "${url}"`, { timeout: 300000, maxBuffer: 1024 * 1024 * 10 });
-        if (!await fs.pathExists(outputPath)) throw new Error('File not created');
+        
+        console.log('📥 Downloading video with metadata...');
+        const { stdout } = await execPromise(`yt-dlp -f "${format}" -o "${outputPath}" --no-warnings --merge-output-format mp4 --print-json "${url}"`, { timeout: 300000, maxBuffer: 1024 * 1024 * 20 });
+        
+        let metadata = {};
+        try {
+            const lines = stdout.trim().split('\n');
+            const lastLine = lines[lines.length - 1];
+            if (lastLine.startsWith('{')) metadata = JSON.parse(lastLine);
+        } catch (e) { console.log('Metadata parse warning:', e.message); }
+        
+        const files = await fs.readdir(TEMP_DIR);
+        const actualFile = files.find(f => f.startsWith(id));
+        if (!actualFile) throw new Error('File not created');
+        
+        const actualPath = path.join(TEMP_DIR, actualFile);
+        const stats = await fs.stat(actualPath);
+        const fileSizeBytes = stats.size;
+        const fileSizeMB = (fileSizeBytes / (1024 * 1024)).toFixed(2);
+        
         trackDownload('video');
         const downloadUrl = `/api/download/${id}`;
-        setTimeout(() => fs.remove(outputPath).catch(() => {}), 3600000);
-        res.json({ success: true, downloadUrl, fileName: `video-${id.slice(0, 8)}.mp4` });
+        setTimeout(() => fs.remove(actualPath).catch(() => {}), 3600000);
+        
+        res.json({
+            success: true,
+            downloadUrl: downloadUrl,
+            fileName: actualFile,
+            title: metadata.title || metadata.fulltitle || 'Facebook Video',
+            duration: metadata.duration || 0,
+            fileSize: fileSizeBytes,
+            fileSizeMB: fileSizeMB,
+            thumbnail: metadata.thumbnail || '',
+            previewUrl: downloadUrl,
+            format: 'mp4',
+            quality: quality
+        });
     } catch (error) { console.error('Download error:', error); res.status(500).json({ success: false, error: 'Download failed' }); }
 });
 
+// ============ CONVERT AUDIO (Metadata সহ) ============
 app.post('/api/convert-audio', async (req, res) => {
     try {
         const { url, quality = '128', format = 'mp3' } = req.body;
         if (!url) return res.status(400).json({ success: false, error: 'URL is required' });
+        
         const id = uuidv4();
         const outputPath = path.join(TEMP_DIR, `${id}.${format}`);
-        await execPromise(`yt-dlp -x --audio-format ${format} --audio-quality ${quality} -o "${outputPath}" --no-warnings "${url}"`, { timeout: 300000, maxBuffer: 1024 * 1024 * 10 });
-        if (!await fs.pathExists(outputPath)) throw new Error('File not created');
+        
+        console.log('🎵 Converting audio with metadata...');
+        const { stdout } = await execPromise(`yt-dlp -x --audio-format ${format} --audio-quality ${quality} -o "${outputPath}" --no-warnings --print-json "${url}"`, { timeout: 300000, maxBuffer: 1024 * 1024 * 20 });
+        
+        let metadata = {};
+        try {
+            const lines = stdout.trim().split('\n');
+            const lastLine = lines[lines.length - 1];
+            if (lastLine.startsWith('{')) metadata = JSON.parse(lastLine);
+        } catch (e) { console.log('Metadata parse warning:', e.message); }
+        
+        const files = await fs.readdir(TEMP_DIR);
+        const actualFile = files.find(f => f.startsWith(id));
+        if (!actualFile) throw new Error('File not created');
+        
+        const actualPath = path.join(TEMP_DIR, actualFile);
+        const stats = await fs.stat(actualPath);
+        const fileSizeBytes = stats.size;
+        const fileSizeMB = (fileSizeBytes / (1024 * 1024)).toFixed(2);
+        
         trackDownload('audio');
         const downloadUrl = `/api/download/${id}`;
-        setTimeout(() => fs.remove(outputPath).catch(() => {}), 3600000);
-        res.json({ success: true, audio_url: downloadUrl, downloadUrl, fileName: `audio-${id.slice(0, 8)}.${format}` });
+        setTimeout(() => fs.remove(actualPath).catch(() => {}), 3600000);
+        
+        res.json({
+            success: true,
+            downloadUrl: downloadUrl,
+            audio_url: downloadUrl,
+            fileName: actualFile,
+            title: metadata.title || metadata.fulltitle || 'Facebook Audio',
+            duration: metadata.duration || 0,
+            fileSize: fileSizeBytes,
+            fileSizeMB: fileSizeMB,
+            thumbnail: metadata.thumbnail || '',
+            format: format,
+            quality: quality
+        });
     } catch (error) { console.error('Audio error:', error); res.status(500).json({ success: false, error: 'Conversion failed' }); }
 });
 
+// ============ DOWNLOAD THUMBNAIL (Metadata সহ) ============
 app.post('/api/download-image', async (req, res) => {
     try {
         const { url } = req.body;
         if (!url) return res.status(400).json({ success: false, error: 'URL is required' });
+        
         const id = uuidv4();
         const outputTemplate = path.join(TEMP_DIR, `${id}.%(ext)s`);
-        await execPromise(`yt-dlp --skip-download --write-thumbnail -o "${outputTemplate}" --no-warnings "${url}"`, { timeout: 120000 });
+        
+        console.log('🖼️ Downloading thumbnail with metadata...');
+        const { stdout } = await execPromise(`yt-dlp --skip-download --write-thumbnail -o "${outputTemplate}" --no-warnings --print-json "${url}"`, { timeout: 120000, maxBuffer: 1024 * 1024 * 20 });
+        
+        let metadata = {};
+        try {
+            const lines = stdout.trim().split('\n');
+            const lastLine = lines[lines.length - 1];
+            if (lastLine.startsWith('{')) metadata = JSON.parse(lastLine);
+        } catch (e) { console.log('Metadata parse warning:', e.message); }
+        
         const files = await fs.readdir(TEMP_DIR);
         const thumbFile = files.find(f => f.startsWith(id) && (f.endsWith('.jpg') || f.endsWith('.png') || f.endsWith('.webp')));
         if (!thumbFile) throw new Error('Thumbnail not found');
+        
+        const thumbPath = path.join(TEMP_DIR, thumbFile);
+        const stats = await fs.stat(thumbPath);
+        const fileSizeBytes = stats.size;
+        const fileSizeMB = (fileSizeBytes / (1024 * 1024)).toFixed(2);
+        
         trackDownload('thumbnail');
         const downloadUrl = `/api/download/${id}`;
-        const thumbPath = path.join(TEMP_DIR, thumbFile);
         setTimeout(() => fs.remove(thumbPath).catch(() => {}), 3600000);
-        res.json({ success: true, image_url: downloadUrl, downloadUrl, fileName: thumbFile });
+        
+        res.json({
+            success: true,
+            downloadUrl: downloadUrl,
+            image_url: downloadUrl,
+            fileName: thumbFile,
+            title: metadata.title || metadata.fulltitle || 'Facebook Thumbnail',
+            duration: metadata.duration || 0,
+            fileSize: fileSizeBytes,
+            fileSizeMB: fileSizeMB,
+            thumbnail: downloadUrl,
+            previewUrl: downloadUrl,
+            format: thumbFile.split('.').pop().toUpperCase()
+        });
     } catch (error) { console.error('Thumbnail error:', error); res.status(500).json({ success: false, error: 'Thumbnail download failed' }); }
 });
 
@@ -190,6 +287,11 @@ app.get('/api/download/:id', async (req, res) => {
         const file = files.find(f => f.startsWith(id));
         if (!file) return res.status(404).json({ success: false, error: 'File not found or expired' });
         const filePath = path.join(TEMP_DIR, file);
+        const ext = file.split('.').pop().toLowerCase();
+        const contentTypes = { 'mp4': 'video/mp4', 'mp3': 'audio/mpeg', 'm4a': 'audio/mp4', 'wav': 'audio/wav', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'webp': 'image/webp' };
+        if (contentTypes[ext]) res.setHeader('Content-Type', contentTypes[ext]);
+        res.setHeader('Content-Disposition', `attachment; filename="${file}"`);
+        res.setHeader('Accept-Ranges', 'bytes');
         res.download(filePath, file);
     } catch (error) { res.status(500).json({ success: false, error: 'File download failed' }); }
 });
@@ -224,26 +326,15 @@ setInterval(async () => {
     } catch (error) { console.error('Cleanup error:', error); }
 }, 1800000);
 
-// ============ SERVER KEEP-ALIVE SYSTEM ============
 const keepAliveInterval = 9 * 60 * 1000;
-
 function keepAlive() {
     const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
     const url = new URL(appUrl + '/api/health');
     const client = url.protocol === 'https:' ? https : http;
-    const req = client.get(url, (res) => {
-        console.log('✅ Keep-alive response:', res.statusCode);
-        res.resume();
-    });
-    req.on('error', (error) => {
-        console.log('⚠️ Keep-alive ping failed:', error.message);
-    });
-    req.setTimeout(10000, () => {
-        req.destroy();
-        console.log('⚠️ Keep-alive timeout');
-    });
+    const req = client.get(url, (res) => { console.log('✅ Keep-alive response:', res.statusCode); res.resume(); });
+    req.on('error', (error) => { console.log('⚠️ Keep-alive ping failed:', error.message); });
+    req.setTimeout(10000, () => { req.destroy(); console.log('⚠️ Keep-alive timeout'); });
 }
-
 setInterval(keepAlive, keepAliveInterval);
 setTimeout(keepAlive, 60000);
 console.log('🟢 Server Keep-Alive System activated (every 9 minutes)');
