@@ -1,4 +1,4 @@
-// server.js - সম্পূর্ণ আপডেটেড (Metadata সহ)
+// server.js - Complete Updated with File Streaming Support
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -25,7 +25,7 @@ fs.ensureDirSync(TEMP_DIR);
 fs.ensureDirSync(DATA_DIR);
 fs.ensureDirSync(BLOG_DIR);
 
-app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors());
 app.use(compression());
 app.use(express.json({ limit: '50mb' }));
@@ -165,19 +165,20 @@ app.post('/api/download-video', async (req, res) => {
         const fileSizeMB = (fileSizeBytes / (1024 * 1024)).toFixed(2);
         
         trackDownload('video');
-        const downloadUrl = `/api/download/${id}`;
+        const downloadUrl = `/api/file/${id}`;
+        const previewUrl = `/api/file/${id}?preview=1`;
         setTimeout(() => fs.remove(actualPath).catch(() => {}), 3600000);
         
         res.json({
             success: true,
             downloadUrl: downloadUrl,
+            previewUrl: previewUrl,
             fileName: actualFile,
             title: metadata.title || metadata.fulltitle || 'Facebook Video',
             duration: metadata.duration || 0,
             fileSize: fileSizeBytes,
             fileSizeMB: fileSizeMB,
             thumbnail: metadata.thumbnail || '',
-            previewUrl: downloadUrl,
             format: 'mp4',
             quality: quality
         });
@@ -213,13 +214,15 @@ app.post('/api/convert-audio', async (req, res) => {
         const fileSizeMB = (fileSizeBytes / (1024 * 1024)).toFixed(2);
         
         trackDownload('audio');
-        const downloadUrl = `/api/download/${id}`;
+        const downloadUrl = `/api/file/${id}`;
+        const previewUrl = `/api/file/${id}?preview=1`;
         setTimeout(() => fs.remove(actualPath).catch(() => {}), 3600000);
         
         res.json({
             success: true,
             downloadUrl: downloadUrl,
             audio_url: downloadUrl,
+            previewUrl: previewUrl,
             fileName: actualFile,
             title: metadata.title || metadata.fulltitle || 'Facebook Audio',
             duration: metadata.duration || 0,
@@ -261,39 +264,151 @@ app.post('/api/download-image', async (req, res) => {
         const fileSizeMB = (fileSizeBytes / (1024 * 1024)).toFixed(2);
         
         trackDownload('thumbnail');
-        const downloadUrl = `/api/download/${id}`;
+        const downloadUrl = `/api/file/${id}`;
+        const previewUrl = `/api/file/${id}?preview=1`;
         setTimeout(() => fs.remove(thumbPath).catch(() => {}), 3600000);
         
         res.json({
             success: true,
             downloadUrl: downloadUrl,
             image_url: downloadUrl,
+            previewUrl: previewUrl,
             fileName: thumbFile,
             title: metadata.title || metadata.fulltitle || 'Facebook Thumbnail',
             duration: metadata.duration || 0,
             fileSize: fileSizeBytes,
             fileSizeMB: fileSizeMB,
-            thumbnail: downloadUrl,
-            previewUrl: downloadUrl,
+            thumbnail: previewUrl,
             format: thumbFile.split('.').pop().toUpperCase()
         });
     } catch (error) { console.error('Thumbnail error:', error); res.status(500).json({ success: false, error: 'Thumbnail download failed' }); }
 });
 
+// ============ FILE SERVING (Streaming + Download + Preview) ============
+app.get('/api/file/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const isPreview = req.query.preview === '1';
+        const isDownload = req.query.download === '1';
+        
+        const files = await fs.readdir(TEMP_DIR);
+        const file = files.find(f => f.startsWith(id));
+        
+        if (!file) {
+            return res.status(404).json({ success: false, error: 'File not found or expired' });
+        }
+        
+        const filePath = path.join(TEMP_DIR, file);
+        const ext = file.split('.').pop().toLowerCase();
+        
+        const contentTypes = {
+            'mp4': 'video/mp4',
+            'webm': 'video/webm',
+            'mp3': 'audio/mpeg',
+            'm4a': 'audio/mp4',
+            'wav': 'audio/wav',
+            'ogg': 'audio/ogg',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'png': 'image/png',
+            'webp': 'image/webp',
+            'gif': 'image/gif'
+        };
+        
+        const contentType = contentTypes[ext] || 'application/octet-stream';
+        
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        
+        const stat = await fs.stat(filePath);
+        const fileSize = stat.size;
+        const range = req.headers.range;
+        
+        if (isDownload) {
+            res.setHeader('Content-Disposition', `attachment; filename="${file}"`);
+        } else {
+            res.setHeader('Content-Disposition', `inline; filename="${file}"`);
+        }
+        
+        if (range) {
+            const parts = range.replace(/bytes=/, '').split('-');
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+            const chunkSize = (end - start) + 1;
+            
+            res.status(206);
+            res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+            res.setHeader('Content-Length', chunkSize);
+            
+            const stream = fs.createReadStream(filePath, { start, end });
+            stream.on('error', (err) => { console.error('Stream error:', err); res.end(); });
+            stream.pipe(res);
+        } else {
+            res.setHeader('Content-Length', fileSize);
+            const stream = fs.createReadStream(filePath);
+            stream.on('error', (err) => { console.error('Stream error:', err); res.end(); });
+            stream.pipe(res);
+        }
+        
+    } catch (error) {
+        console.error('File serving error:', error);
+        res.status(500).json({ success: false, error: 'File serving failed' });
+    }
+});
+
+// ============ BACKWARD COMPATIBILITY: /api/download/:id ============
 app.get('/api/download/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const files = await fs.readdir(TEMP_DIR);
         const file = files.find(f => f.startsWith(id));
-        if (!file) return res.status(404).json({ success: false, error: 'File not found or expired' });
+        
+        if (!file) {
+            return res.status(404).json({ success: false, error: 'File not found or expired' });
+        }
+        
         const filePath = path.join(TEMP_DIR, file);
         const ext = file.split('.').pop().toLowerCase();
-        const contentTypes = { 'mp4': 'video/mp4', 'mp3': 'audio/mpeg', 'm4a': 'audio/mp4', 'wav': 'audio/wav', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'webp': 'image/webp' };
-        if (contentTypes[ext]) res.setHeader('Content-Type', contentTypes[ext]);
-        res.setHeader('Content-Disposition', `attachment; filename="${file}"`);
+        const contentTypes = {
+            'mp4': 'video/mp4', 'webm': 'video/webm', 'mp3': 'audio/mpeg',
+            'm4a': 'audio/mp4', 'wav': 'audio/wav', 'ogg': 'audio/ogg',
+            'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+            'webp': 'image/webp', 'gif': 'image/gif'
+        };
+        const contentType = contentTypes[ext] || 'application/octet-stream';
+        
+        res.setHeader('Content-Type', contentType);
         res.setHeader('Accept-Ranges', 'bytes');
-        res.download(filePath, file);
-    } catch (error) { res.status(500).json({ success: false, error: 'File download failed' }); }
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        
+        const stat = await fs.stat(filePath);
+        const fileSize = stat.size;
+        const range = req.headers.range;
+        
+        if (range) {
+            const parts = range.replace(/bytes=/, '').split('-');
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+            const chunkSize = (end - start) + 1;
+            res.status(206);
+            res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+            res.setHeader('Content-Length', chunkSize);
+            const stream = fs.createReadStream(filePath, { start, end });
+            stream.pipe(res);
+        } else {
+            res.setHeader('Content-Length', fileSize);
+            res.setHeader('Content-Disposition', `attachment; filename="${file}"`);
+            const stream = fs.createReadStream(filePath);
+            stream.pipe(res);
+        }
+    } catch (error) {
+        console.error('File download error:', error);
+        res.status(500).json({ success: false, error: 'File download failed' });
+    }
 });
 
 app.get('/', (req, res) => { trackVisit(req); res.sendFile(path.join(__dirname, 'public', 'index.html')); });
