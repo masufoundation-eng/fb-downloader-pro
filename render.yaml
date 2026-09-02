@@ -1,0 +1,16 @@
+# ফাইল ৩: render.yaml
+services:
+  - type: web
+    name: fb-downloader-pro
+    env: node
+    buildCommand: npm install && pip install yt-dlp
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: APP_URL
+        value: https://fb-downloader-pro.onrender.com
+    autoDeploy: true
