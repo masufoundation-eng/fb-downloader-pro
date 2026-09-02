@@ -1,0 +1,71 @@
+<!-- ফাইল ৫: public/blog.html -->
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ব্লগ - FB Downloader Pro</title>
+    <meta name="description" content="FB Downloader Pro এর দৈনিক রিপোর্ট এবং ব্লগ পোস্ট">
+    <meta name="robots" content="index, follow">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; color: #1c1e21; min-height: 100vh; }
+        header { background: #ffffff; padding: 15px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
+        nav { max-width: 800px; margin: 0 auto; display: flex; gap: 15px; align-items: center; }
+        nav a { color: #1877f2; text-decoration: none; font-weight: 600; font-size: 14px; }
+        nav a:hover { text-decoration: underline; }
+        .container { max-width: 800px; margin: 30px auto; padding: 0 20px; }
+        h1 { text-align: center; margin-bottom: 30px; color: #1c1e21; }
+        .blog-list { display: grid; gap: 20px; }
+        .blog-card { background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); transition: transform 0.3s; }
+        .blog-card:hover { transform: translateY(-3px); box-shadow: 0 5px 20px rgba(0,0,0,0.15); }
+        .blog-card h2 { font-size: 18px; margin-bottom: 10px; color: #1877f2; }
+        .blog-card p { font-size: 14px; color: #65676b; margin-bottom: 15px; }
+        .blog-links { display: flex; gap: 10px; }
+        .blog-links a { padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 13px; }
+        .bn-link { background: #1877f2; color: white; }
+        .en-link { background: #42b72a; color: white; }
+        .no-posts { text-align: center; padding: 40px; color: #65676b; }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/">← হোম</a>
+            <a href="/blog">ব্লগ</a>
+            <a href="/faq">FAQ</a>
+            <a href="/about">About</a>
+        </nav>
+    </header>
+    <div class="container">
+        <h1>📊 দৈনিক রিপোর্ট ও ব্লগ</h1>
+        <div class="blog-list" id="blogList">
+            <div class="no-posts">ব্লগ পোস্ট লোড হচ্ছে...</div>
+        </div>
+    </div>
+    <script>
+        fetch('/api/blogs')
+            .then(res => res.json())
+            .then(data => {
+                const list = document.getElementById('blogList');
+                if (data.success && data.blogs.length > 0) {
+                    list.innerHTML = data.blogs.map(blog => `
+                        <div class="blog-card">
+                            <h2>📅 ${blog.date}</h2>
+                            <p>দৈনিক ব্যবহারের রিপোর্ট এবং পরিসংখ্যান</p>
+                            <div class="blog-links">
+                                <a href="${blog.bn}" class="bn-link">বাংলা পড়ুন</a>
+                                <a href="${blog.en}" class="en-link">Read English</a>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    list.innerHTML = '<div class="no-posts">কোনো ব্লগ পোস্ট নেই। প্রথম পোস্ট আগামীকাল ৩টায় প্রকাশিত হবে।</div>';
+                }
+            })
+            .catch(() => {
+                document.getElementById('blogList').innerHTML = '<div class="no-posts">ব্লগ লোড করা যায়নি</div>';
+            });
+    </script>
+</body>
+</html>
