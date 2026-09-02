@@ -1,4 +1,3 @@
-// ফাইল ১: server.js (সম্পূর্ণ আপডেটেড)
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -12,6 +11,8 @@ const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
 const cron = require('node-cron');
+const http = require('http');
+const https = require('https');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -49,8 +50,6 @@ function trackVisit(req) {
     const ua = req.headers['user-agent'] || '';
     if (ua.includes('Mobile')) data.daily[today].devices.mobile += 1;
     else data.daily[today].devices.desktop += 1;
-    const lang = req.path.startsWith('/en') ? 'en' : 'bn';
-    data.daily[today].languages[lang] = (data.daily[today].languages[lang] || 0) + 1;
     saveAnalytics(data);
 }
 function trackDownload(type) {
@@ -224,5 +223,29 @@ setInterval(async () => {
         }
     } catch (error) { console.error('Cleanup error:', error); }
 }, 1800000);
+
+// ============ SERVER KEEP-ALIVE SYSTEM ============
+const keepAliveInterval = 9 * 60 * 1000;
+
+function keepAlive() {
+    const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
+    const url = new URL(appUrl + '/api/health');
+    const client = url.protocol === 'https:' ? https : http;
+    const req = client.get(url, (res) => {
+        console.log('✅ Keep-alive response:', res.statusCode);
+        res.resume();
+    });
+    req.on('error', (error) => {
+        console.log('⚠️ Keep-alive ping failed:', error.message);
+    });
+    req.setTimeout(10000, () => {
+        req.destroy();
+        console.log('⚠️ Keep-alive timeout');
+    });
+}
+
+setInterval(keepAlive, keepAliveInterval);
+setTimeout(keepAlive, 60000);
+console.log('🟢 Server Keep-Alive System activated (every 9 minutes)');
 
 app.listen(PORT, () => { console.log(`✅ FB Downloader Pro running on port ${PORT}`); });
