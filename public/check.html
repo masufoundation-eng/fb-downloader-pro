@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FB Downloader Pro - সার্ভার চেক</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; color: #58a6ff; margin-bottom: 20px; }
+        .card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        .card h2 { color: #58a6ff; font-size: 1.1em; margin-bottom: 15px; }
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #30363d;
+            font-size: 0.9em;
+        }
+        .result-item:last-child { border-bottom: none; }
+        .status { font-weight: 700; }
+        .ok { color: #3fb950; }
+        .error { color: #f85149; }
+        .loading { color: #d29922; }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #238636;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover { background: #2ea043; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .log {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 0.8em;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+        .log.active { display: block; }
+        .log p { margin: 5px 0; }
+        .server-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .info-box {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+        .info-box .label { font-size: 0.7em; color: #8b949e; }
+        .info-box .value { font-size: 0.9em; font-weight: 700; color: #58a6ff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 FB Downloader Pro - সার্ভার চেক</h1>
+        
+        <div class="card">
+            <h2>📋 সার্ভার তথ্য</h2>
+            <div class="server-info">
+                <div class="info-box">
+                    <div class="label">সার্ভার URL</div>
+                    <div class="value" id="serverUrl">-</div>
+                </div>
+                <div class="info-box">
+                    <div class="label">স্ট্যাটাস</div>
+                    <div class="value" id="serverStatus">-</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🔴 API Endpoints চেক</h2>
+            <div id="results">
+                <div class="result-item">
+                    <span>GET /api/health</span>
+                    <span class="status" id="healthStatus">-</span>
+                </div>
+                <div class="result-item">
+                    <span>GET /api/stats</span>
+                    <span class="status" id="statsStatus">-</span>
+                </div>
+                <div class="result-item">
+                    <span>GET /api/blogs</span>
+                    <span class="status" id="blogsStatus">-</span>
+                </div>
+            </div>
+            <button id="checkBtn" onclick="checkServer()">🔄 সব চেক করুন</button>
+        </div>
+
+        <div class="card">
+            <h2>📝 লগ</h2>
+            <div class="log" id="logBox"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://fb-downloader-pro-0yw2.onrender.com';
+        const logBox = document.getElementById('logBox');
+        
+        function addLog(message, type) {
+            logBox.classList.add('active');
+            const p = document.createElement('p');
+            const time = new Date().toLocaleTimeString();
+            p.textContent = `[${time}] ${message}`;
+            if (type === 'ok') p.style.color = '#3fb950';
+            else if (type === 'error') p.style.color = '#f85149';
+            else p.style.color = '#d29922';
+            logBox.appendChild(p);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+        
+        async function checkServer() {
+            const btn = document.getElementById('checkBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ চেক করা হচ্ছে...';
+            logBox.innerHTML = '';
+            
+            document.getElementById('serverUrl').textContent = API_BASE;
+            document.getElementById('serverStatus').textContent = '⏳ Checking...';
+            document.getElementById('serverStatus').style.color = '#d29922';
+            
+            addLog('সার্ভার চেক শুরু...', '');
+            
+            // Health Check
+            document.getElementById('healthStatus').textContent = '⏳';
+            document.getElementById('healthStatus').className = 'status loading';
+            try {
+                const response = await fetch(API_BASE + '/api/health');
+                const data = await response.json();
+                if (data.success && data.status === 'ok') {
+                    document.getElementById('healthStatus').textContent = '✅ OK';
+                    document.getElementById('healthStatus').className = 'status ok';
+                    document.getElementById('serverStatus').textContent = '🟢 Live';
+                    document.getElementById('serverStatus').style.color = '#3fb950';
+                    addLog('✅ Health Check: Success', 'ok');
+                    addLog(`⏱️ Server Time: ${data.timestamp}`, 'ok');
+                } else {
+                    document.getElementById('healthStatus').textContent = '❌ FAIL';
+                    document.getElementById('healthStatus').className = 'status error';
+                    document.getElementById('serverStatus').textContent = '🔴 Down';
+                    document.getElementById('serverStatus').style.color = '#f85149';
+                    addLog('❌ Health Check: Failed', 'error');
+                }
+            } catch (error) {
+                document.getElementById('healthStatus').textContent = '❌ ERROR';
+                document.getElementById('healthStatus').className = 'status error';
+                document.getElementById('serverStatus').textContent = '🔴 Offline';
+                document.getElementById('serverStatus').style.color = '#f85149';
+                addLog('❌ Health Check: ' + error.message, 'error');
+            }
+            
+            // Stats Check
+            document.getElementById('statsStatus').textContent = '⏳';
+            document.getElementById('statsStatus').className = 'status loading';
+            try {
+                const response = await fetch(API_BASE + '/api/stats');
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('statsStatus').textContent = '✅ OK';
+                    document.getElementById('statsStatus').className = 'status ok';
+                    const visitors = data.stats?.total?.visitors || 0;
+                    const views = data.stats?.total?.views || 0;
+                    const downloads = data.stats?.total?.downloads || 0;
+                    addLog(`✅ Stats: Visitors=${visitors}, Views=${views}, Downloads=${downloads}`, 'ok');
+                } else {
+                    document.getElementById('statsStatus').textContent = '❌ FAIL';
+                    document.getElementById('statsStatus').className = 'status error';
+                    addLog('❌ Stats Check: Failed', 'error');
+                }
+            } catch (error) {
+                document.getElementById('statsStatus').textContent = '❌ ERROR';
+                document.getElementById('statsStatus').className = 'status error';
+                addLog('❌ Stats Check: ' + error.message, 'error');
+            }
+            
+            // Blogs Check
+            document.getElementById('blogsStatus').textContent = '⏳';
+            document.getElementById('blogsStatus').className = 'status loading';
+            try {
+                const response = await fetch(API_BASE + '/api/blogs');
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('blogsStatus').textContent = '✅ OK';
+                    document.getElementById('blogsStatus').className = 'status ok';
+                    addLog(`✅ Blogs: ${data.blogs.length} posts found`, 'ok');
+                } else {
+                    document.getElementById('blogsStatus').textContent = '❌ FAIL';
+                    document.getElementById('blogsStatus').className = 'status error';
+                    addLog('❌ Blogs Check: Failed', 'error');
+                }
+            } catch (error) {
+                document.getElementById('blogsStatus').textContent = '❌ ERROR';
+                document.getElementById('blogsStatus').className = 'status error';
+                addLog('❌ Blogs Check: ' + error.message, 'error');
+            }
+            
+            addLog('সার্ভার চেক সম্পন্ন!', '');
+            btn.disabled = false;
+            btn.textContent = '🔄 সব চেক করুন';
+        }
+        
+        // Page load এ auto check
+        window.onload = function() {
+            checkServer();
+        };
+    </script>
+</body>
+</html>
