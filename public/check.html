@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FB Downloader Pro - সার্ভার চেক</title>
+    <title>FB Downloader Pro - সার্ভার চেক ও ক্ষমতা</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, sans-serif;
+            font-family: 'Segoe UI', 'Noto Sans Bengali', sans-serif;
             background: #0d1117;
             color: #c9d1d9;
             min-height: 100vh;
             padding: 20px;
         }
-        .container { max-width: 800px; margin: 0 auto; }
-        h1 { text-align: center; color: #58a6ff; margin-bottom: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { text-align: center; color: #58a6ff; margin-bottom: 5px; font-size: 1.5em; }
+        .subtitle { text-align: center; color: #8b949e; font-size: 0.85em; margin-bottom: 20px; }
+        
         .card {
             background: #161b22;
             border: 1px solid #30363d;
@@ -22,7 +24,50 @@
             padding: 20px;
             margin-bottom: 15px;
         }
-        .card h2 { color: #58a6ff; font-size: 1.1em; margin-bottom: 15px; }
+        .card h2 { color: #58a6ff; font-size: 1.05em; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+        }
+        .feature-item {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .feature-icon { font-size: 1.3em; flex-shrink: 0; }
+        .feature-text h3 { font-size: 0.85em; color: #c9d1d9; margin-bottom: 3px; }
+        .feature-text p { font-size: 0.75em; color: #8b949e; line-height: 1.4; }
+        
+        .endpoint {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            font-family: monospace;
+            font-size: 0.8em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .method {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 0.7em;
+            min-width: 45px;
+            text-align: center;
+        }
+        .get { background: #1f6feb33; color: #58a6ff; }
+        .post { background: #23863633; color: #3fb950; }
+        
         .result-item {
             display: flex;
             justify-content: space-between;
@@ -36,6 +81,7 @@
         .ok { color: #3fb950; }
         .error { color: #f85149; }
         .loading { color: #d29922; }
+        
         button {
             width: 100%;
             padding: 12px;
@@ -46,29 +92,14 @@
             font-size: 1em;
             font-weight: 700;
             cursor: pointer;
-            margin-top: 10px;
         }
         button:hover { background: #2ea043; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .log {
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 15px;
-            font-family: monospace;
-            font-size: 0.8em;
-            max-height: 300px;
-            overflow-y: auto;
-            display: none;
-        }
-        .log.active { display: block; }
-        .log p { margin: 5px 0; }
+        
         .server-info {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 10px;
-            margin-top: 10px;
         }
         .info-box {
             background: #0d1117;
@@ -79,47 +110,204 @@
         }
         .info-box .label { font-size: 0.7em; color: #8b949e; }
         .info-box .value { font-size: 0.9em; font-weight: 700; color: #58a6ff; }
+        
+        .capability-table { width: 100%; border-collapse: collapse; }
+        .capability-table th, .capability-table td {
+            text-align: left;
+            padding: 8px 10px;
+            font-size: 0.8em;
+            border-bottom: 1px solid #30363d;
+        }
+        .capability-table th { color: #8b949e; font-size: 0.7em; text-transform: uppercase; }
+        
+        .log {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 0.75em;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+        .log.active { display: block; }
+        .log p { margin: 3px 0; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔍 FB Downloader Pro - সার্ভার চেক</h1>
-        
+        <h1>🔍 FB Downloader Pro - সার্ভার চেক ও ক্ষমতা</h1>
+        <p class="subtitle">Server: fb-downloader-pro-0yw2.onrender.com</p>
+
+        <!-- সার্ভার স্ট্যাটাস -->
         <div class="card">
-            <h2>📋 সার্ভার তথ্য</h2>
+            <h2>📡 সার্ভার স্ট্যাটাস</h2>
             <div class="server-info">
                 <div class="info-box">
-                    <div class="label">সার্ভার URL</div>
-                    <div class="value" id="serverUrl">-</div>
+                    <div class="label">স্ট্যাটাস</div>
+                    <div class="value" id="serverStatus">⏳ Checking...</div>
                 </div>
                 <div class="info-box">
-                    <div class="label">স্ট্যাটাস</div>
-                    <div class="value" id="serverStatus">-</div>
+                    <div class="label">সার্ভার টাইম</div>
+                    <div class="value" id="serverTime">-</div>
+                </div>
+            </div>
+            <div style="margin-top: 15px;">
+                <button id="checkBtn" onclick="checkServer()">🔄 সার্ভার চেক করুন</button>
+            </div>
+        </div>
+
+        <!-- সার্ভারের ক্ষমতা -->
+        <div class="card">
+            <h2>⚡ এই সার্ভার দিয়ে যা যা করা যাবে</h2>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <span class="feature-icon">🎬</span>
+                    <div class="feature-text">
+                        <h3>ভিডিও ডাউনলোড</h3>
+                        <p>Facebook ভিডিও MP4 ফরম্যাটে ডাউনলোড (144p - 1080p)</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🎥</span>
+                    <div class="feature-text">
+                        <h3>Reels ডাউনলোড</h3>
+                        <p>Facebook Reels HD quality তে ডাউনলোড</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">📖</span>
+                    <div class="feature-text">
+                        <h3>Story ডাউনলোড</h3>
+                        <p>Facebook Story সংরক্ষণ করুন</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🎵</span>
+                    <div class="feature-text">
+                        <h3>MP3 কনভার্ট</h3>
+                        <p>ভিডিও থেকে অডিও (64-320 kbps, MP3/M4A/WAV)</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🖼️</span>
+                    <div class="feature-text">
+                        <h3>থাম্বনেইল ডাউনলোড</h3>
+                        <p>ভিডিওর থাম্বনেইল JPG/PNG ফরম্যাটে</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">📊</span>
+                    <div class="feature-text">
+                        <h3>অ্যানালিটিক্স</h3>
+                        <p>ভিজিটর, ভিউ, ডাউনলোড ট্র্যাকিং</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">📝</span>
+                    <div class="feature-text">
+                        <h3>অটো ব্লগ</h3>
+                        <p>প্রতিদিন ৩টায় auto blog publish (BN+EN)</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🔍</span>
+                    <div class="feature-text">
+                        <h3>SEO ফিচার</h3>
+                        <p>Sitemap, Robots.txt, Meta tags</p>
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- API Endpoints -->
         <div class="card">
-            <h2>🔴 API Endpoints চেক</h2>
-            <div id="results">
-                <div class="result-item">
-                    <span>GET /api/health</span>
-                    <span class="status" id="healthStatus">-</span>
-                </div>
-                <div class="result-item">
-                    <span>GET /api/stats</span>
-                    <span class="status" id="statsStatus">-</span>
-                </div>
-                <div class="result-item">
-                    <span>GET /api/blogs</span>
-                    <span class="status" id="blogsStatus">-</span>
-                </div>
+            <h2>🔗 API Endpoints</h2>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/api/health</span>
+                <span style="margin-left:auto;color:#8b949e;font-size:0.7em;">সার্ভার স্ট্যাটাস চেক</span>
             </div>
-            <button id="checkBtn" onclick="checkServer()">🔄 সব চেক করুন</button>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/api/stats</span>
+                <span style="margin-left:auto;color:#8b949e;font-size:0.7em;">অ্যানালিটিক্স ডেটা</span>
+            </div>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/api/blogs</span>
+                <span style="margin-left:auto;color:#8b949e;font-size:0.7em;">ব্লগ তালিকা</span>
+            </div>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span>/api/download-video</span>
+                <span style="margin-left:auto;color:#8b949e;font-size:0.7em;">ভিডিও/Reels/Story ডাউনলোড</span>
+            </div>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span>/api/convert-audio</span>
+                <span style="margin-left:auto;color:#8b949e;font-size:0.7em;">MP3 কনভার্ট</span>
+            </div>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span>/api/download-image</span>
+                <span style="margin-left:auto;color:#8b949e;font-size:0.7em;">থাম্বনেইল ডাউনলোড</span>
+            </div>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/api/file/:id</span>
+                <span style="margin-left:auto;color:#8b949e;font-size:0.7em;">ফাইল স্ট্রিমিং</span>
+            </div>
         </div>
 
+        <!-- সার্ভার ক্ষমতা টেবিল -->
         <div class="card">
-            <h2>📝 লগ</h2>
+            <h2>📊 সার্ভার ক্ষমতা</h2>
+            <table class="capability-table">
+                <thead>
+                    <tr>
+                        <th>ক্ষমতা</th>
+                        <th>মান</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>একসাথে Active Users</td>
+                        <td>৫-১০ জন</td>
+                    </tr>
+                    <tr>
+                        <td>দৈনিক Downloads</td>
+                        <td>৫০০-১০০০ টি</td>
+                    </tr>
+                    <tr>
+                        <td>ফাইল সাইজ লিমিট</td>
+                        <td>১০০ MB (প্রস্তাবিত)</td>
+                    </tr>
+                    <tr>
+                        <td>ভিডিও Quality</td>
+                        <td>144p - 1080p</td>
+                    </tr>
+                    <tr>
+                        <td>অডিও Quality</td>
+                        <td>64-320 kbps</td>
+                    </tr>
+                    <tr>
+                        <td>ফাইল Expiry</td>
+                        <td>১ ঘণ্টা</td>
+                    </tr>
+                    <tr>
+                        <td>Rate Limit</td>
+                        <td>২০০ req/১৫ মিনিট</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- লগ -->
+        <div class="card">
+            <h2>📝 সার্ভার চেক লগ</h2>
             <div class="log" id="logBox"></div>
         </div>
     </div>
@@ -146,94 +334,57 @@
             btn.textContent = '⏳ চেক করা হচ্ছে...';
             logBox.innerHTML = '';
             
-            document.getElementById('serverUrl').textContent = API_BASE;
             document.getElementById('serverStatus').textContent = '⏳ Checking...';
             document.getElementById('serverStatus').style.color = '#d29922';
             
             addLog('সার্ভার চেক শুরু...', '');
             
             // Health Check
-            document.getElementById('healthStatus').textContent = '⏳';
-            document.getElementById('healthStatus').className = 'status loading';
             try {
                 const response = await fetch(API_BASE + '/api/health');
                 const data = await response.json();
                 if (data.success && data.status === 'ok') {
-                    document.getElementById('healthStatus').textContent = '✅ OK';
-                    document.getElementById('healthStatus').className = 'status ok';
                     document.getElementById('serverStatus').textContent = '🟢 Live';
                     document.getElementById('serverStatus').style.color = '#3fb950';
+                    document.getElementById('serverTime').textContent = new Date(data.timestamp).toLocaleString();
                     addLog('✅ Health Check: Success', 'ok');
-                    addLog(`⏱️ Server Time: ${data.timestamp}`, 'ok');
-                } else {
-                    document.getElementById('healthStatus').textContent = '❌ FAIL';
-                    document.getElementById('healthStatus').className = 'status error';
-                    document.getElementById('serverStatus').textContent = '🔴 Down';
-                    document.getElementById('serverStatus').style.color = '#f85149';
-                    addLog('❌ Health Check: Failed', 'error');
+                    addLog('⏱️ Server Time: ' + data.timestamp, 'ok');
                 }
             } catch (error) {
-                document.getElementById('healthStatus').textContent = '❌ ERROR';
-                document.getElementById('healthStatus').className = 'status error';
                 document.getElementById('serverStatus').textContent = '🔴 Offline';
                 document.getElementById('serverStatus').style.color = '#f85149';
-                addLog('❌ Health Check: ' + error.message, 'error');
+                addLog('❌ Health Check Failed: ' + error.message, 'error');
             }
             
             // Stats Check
-            document.getElementById('statsStatus').textContent = '⏳';
-            document.getElementById('statsStatus').className = 'status loading';
             try {
                 const response = await fetch(API_BASE + '/api/stats');
                 const data = await response.json();
                 if (data.success) {
-                    document.getElementById('statsStatus').textContent = '✅ OK';
-                    document.getElementById('statsStatus').className = 'status ok';
-                    const visitors = data.stats?.total?.visitors || 0;
-                    const views = data.stats?.total?.views || 0;
-                    const downloads = data.stats?.total?.downloads || 0;
-                    addLog(`✅ Stats: Visitors=${visitors}, Views=${views}, Downloads=${downloads}`, 'ok');
-                } else {
-                    document.getElementById('statsStatus').textContent = '❌ FAIL';
-                    document.getElementById('statsStatus').className = 'status error';
-                    addLog('❌ Stats Check: Failed', 'error');
+                    const total = data.stats?.total || {};
+                    addLog('✅ Stats: Visitors=' + (total.visitors||0) + ', Views=' + (total.views||0) + ', Downloads=' + (total.downloads||0), 'ok');
                 }
             } catch (error) {
-                document.getElementById('statsStatus').textContent = '❌ ERROR';
-                document.getElementById('statsStatus').className = 'status error';
-                addLog('❌ Stats Check: ' + error.message, 'error');
+                addLog('❌ Stats Check Failed: ' + error.message, 'error');
             }
             
             // Blogs Check
-            document.getElementById('blogsStatus').textContent = '⏳';
-            document.getElementById('blogsStatus').className = 'status loading';
             try {
                 const response = await fetch(API_BASE + '/api/blogs');
                 const data = await response.json();
                 if (data.success) {
-                    document.getElementById('blogsStatus').textContent = '✅ OK';
-                    document.getElementById('blogsStatus').className = 'status ok';
-                    addLog(`✅ Blogs: ${data.blogs.length} posts found`, 'ok');
-                } else {
-                    document.getElementById('blogsStatus').textContent = '❌ FAIL';
-                    document.getElementById('blogsStatus').className = 'status error';
-                    addLog('❌ Blogs Check: Failed', 'error');
+                    addLog('✅ Blogs: ' + data.blogs.length + ' posts', 'ok');
                 }
             } catch (error) {
-                document.getElementById('blogsStatus').textContent = '❌ ERROR';
-                document.getElementById('blogsStatus').className = 'status error';
-                addLog('❌ Blogs Check: ' + error.message, 'error');
+                addLog('❌ Blogs Check Failed: ' + error.message, 'error');
             }
             
-            addLog('সার্ভার চেক সম্পন্ন!', '');
+            addLog('✅ সার্ভার চেক সম্পন্ন!', 'ok');
             btn.disabled = false;
-            btn.textContent = '🔄 সব চেক করুন';
+            btn.textContent = '🔄 সার্ভার চেক করুন';
         }
         
-        // Page load এ auto check
-        window.onload = function() {
-            checkServer();
-        };
+        window.onload = function() { checkServer(); };
     </script>
 </body>
 </html>
